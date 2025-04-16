@@ -1,0 +1,62 @@
+.signal-layout {
+    display: grid;
+    grid-template-areas:
+      ". north ."
+      "west center east"
+      ". south .";
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: 1fr auto 1fr;
+    gap: 20px;
+    justify-items: center;
+    align-items: center;
+    max-width: 800px;
+    margin: 2rem auto;
+    padding-bottom: 3rem; /* Prevent overlap with buttons */
+    position: relative;
+  }
+  
+  .lane-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+  
+  .lane-container.north {
+    grid-area: north;
+  }
+  
+  .lane-container.south {
+    grid-area: south;
+  }
+  
+  .lane-container.east {
+    grid-area: east;
+  }
+  
+  .lane-container.west {
+    grid-area: west;
+  }
+  
+  .intersection-box {
+    grid-area: center;
+    width: 100px;
+    height: 100px;
+    background-color: #555;
+    border: 2px solid #777;
+    z-index: 1;
+  }
+  
+  @media (max-width: 768px) {
+    .signal-layout {
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-rows: 1fr auto 1fr;
+      gap: 10px;
+    }
+  
+    .intersection-box {
+      width: 60px;
+      height: 60px;
+    }
+  }
+  
