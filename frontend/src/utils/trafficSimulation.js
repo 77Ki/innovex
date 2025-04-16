@@ -1,80 +1,73 @@
-// Keeps track of how many times each lane missed getting green
-let missedTurns = {
-    north: 0,
-    south: 0,
-    east: 0,
-    west: 0,
-  };
+// Utility functions for traffic simulation
+
+/**
+ * Simulates optimization algorithm response based on vehicle counts
+ * @param {Object} vehicleCounts - Object containing vehicle counts for each lane
+ * @param {Array} lanes - Array of lane names
+ * @returns {Object} - Optimized green light durations for each lane
+ */
+export function simulateOptimizationResponse(vehicleCounts, lanes) {
+  // Base timing calculation for each lane based on vehicle count
+  // with a minimum time of 3 seconds and max of 15 seconds
+  const times = {}
   
-  // The max number of turns a lane can be skipped before it MUST get green
-  const DEADLINE_THRESHOLD = 3;
+  const totalVehicles = lanes.reduce((sum, lane) => sum + vehicleCounts[lane], 0)
   
-  // Simulate the API response that would come from backend
-  export function simulateOptimizationResponse(vehicleCounts, lanes) {
-    const totalVehicles = Object.values(vehicleCounts).reduce((sum, count) => sum + count, 0);
-    const minTime = 5; // Minimum green light time in seconds
-    const maxTime = 30; // Maximum green light time in seconds
-  
-    const result = {};
-  
-    // Calculate green time proportionally
+  if (totalVehicles === 0) {
+    // Equal distribution if no vehicles
     lanes.forEach(lane => {
-      result[lane] = Math.round(
-        Math.max(
-          minTime,
-          Math.min(
-            maxTime,
-            (vehicleCounts[lane] / Math.max(totalVehicles, 1)) * 60
-          )
-        )
-      );
-    });
-  
-    return result;
+      times[lane] = 5
+    })
+    return times
   }
   
-  // Fair scheduling logic: prioritize heavy lanes but ensure fairness
-  export function getNextLane(vehicleCounts, currentLane, lanes) {
-    // Check if any lane reached deadline
-    const deadlineLane = lanes.find((lane) => missedTurns[lane] >= DEADLINE_THRESHOLD);
-    if (deadlineLane) {
-      missedTurns[deadlineLane] = 0;
-      return deadlineLane;
+  lanes.forEach(lane => {
+    // Calculate green time proportional to vehicle count
+    // with minimum and maximum bounds
+    const ratio = vehicleCounts[lane] / totalVehicles
+    let greenTime = Math.round(ratio * 30)
+    
+    // Enforce minimum and maximum green times
+    greenTime = Math.max(3, greenTime) // minimum 3 seconds
+    greenTime = Math.min(15, greenTime) // maximum 15 seconds
+    
+    times[lane] = greenTime
+  })
+  
+  return times
+}
+
+/**
+ * Simulates traffic flow by updating vehicle counts after a green phase
+ * @param {Object} currentCounts - Current vehicle counts for each lane
+ * @param {Number} activeIndex - Index of the currently active (green) lane
+ * @param {Array} lanes - Array of lane names
+ * @returns {Object} - Updated vehicle counts after traffic flow
+ */
+export function simulateTrafficFlow(currentCounts, activeIndex, lanes) {
+  const updatedCounts = { ...currentCounts }
+  const activeLane = lanes[activeIndex]
+  
+  // Decrease vehicle count for the lane that had green light
+  // Based on how many could pass during the green phase
+  if (updatedCounts[activeLane] > 0) {
+    // Reduce by a random amount up to 3 vehicles or current count
+    const reduction = Math.min(
+      Math.floor(Math.random() * 3) + 1,
+      updatedCounts[activeLane]
+    )
+    updatedCounts[activeLane] -= reduction
+  }
+  
+  // Randomly increase vehicle counts for all lanes to simulate new arrivals
+  lanes.forEach(lane => {
+    // 40% chance of new vehicle arriving at each lane
+    if (Math.random() < 0.4) {
+      // Add 1-2 vehicles
+      const increase = Math.floor(Math.random() * 2) + 1
+      updatedCounts[lane] += increase
     }
+  })
   
-    // Otherwise pick lane with highest vehicle count
-    const sortedLanes = [...lanes].sort((a, b) => vehicleCounts[b] - vehicleCounts[a]);
-    const selectedLane = sortedLanes[0];
-  
-    // Update missedTurns: reset selected lane, increment others
-    lanes.forEach(lane => {
-      if (lane === selectedLane) {
-        missedTurns[lane] = 0;
-      } else {
-        missedTurns[lane]++;
-      }
-    });
-  
-    return selectedLane;
-  }
-  
-  // Simulate vehicle flow: active lane decreases, others increase
-  export function simulateTrafficFlow(currentCounts, activeIndex, lanes) {
-    const newCounts = { ...currentCounts };
-    const activeLane = lanes[activeIndex];
-  
-    // Vehicles passed through the green lane
-    if (newCounts[activeLane] > 0) {
-      newCounts[activeLane] = Math.max(0, newCounts[activeLane] - Math.floor(Math.random() * 3));
-    }
-  
-    // Other lanes may receive vehicles
-    lanes.forEach(lane => {
-      if (lane !== activeLane) {
-        newCounts[lane] += Math.floor(Math.random() * 3); // 0–2 more vehicles
-      }
-    });
-  
-    return newCounts;
-  }
-  
+  return updatedCounts
+}
